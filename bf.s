@@ -359,6 +359,9 @@ print:
 	li $v0, 11
 	lbu $a0, ($s4)
 	syscall
+	
+	addi $s5, $s5, 1
+	
 	j loop
 	
 take_input:
@@ -369,4 +372,7 @@ take_input:
 	li $v0, 1
 	syscall 
 	sb $a0, ($s4)
+	
+	addi $s5, $s5, 1
+	
 	j loop
