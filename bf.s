@@ -384,7 +384,7 @@ decrement_pointer:
 	j loop
 print:
 	li $v0, 11
-	lbu $a0, ($s4)
+	lbu $a0, 0($s4)
 	syscall
 	
 	addi $s5, $s5, 1
@@ -396,9 +396,9 @@ take_input:
 	la $a0, readPrompt
 	syscall
 	
-	li $v0, 1
+	li $v0, 12
 	syscall 
-	sb $a0, ($s4)
+	sb $v0, 0($s4)
 	
 	addi $s5, $s5, 1
 	
