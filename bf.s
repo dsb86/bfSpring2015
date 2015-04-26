@@ -17,9 +17,11 @@
 
 newLine: .asciiz "\n"
 inputPrompt: .asciiz "Enter a valid brainfuck file path: "
+readPrompt: .asciiz "Enter a number between 0 and 256: "
 fileErr: .asciiz "Oops! There was an error processing your input file!"
 
-buffer: .space 512
+inputBuffer: .space 512
+transferBuffer: .space 512
 data: .space 2048
 instructions: .space 2048
 
@@ -175,6 +177,8 @@ ascii_instruction_table:
 #	$t2: The .bf character being handled
 #	$t3: The literal 4
 #	$t4: The weighted memory address of the current .bf character
+#	$t5: The actual number of characters in the file path
+#	$t6: A counting counting the number of actual file path characters
 #
 #	$a0: Syscall parameters
 #	$a1: Syscall parameters
@@ -209,7 +213,7 @@ main:
 
 	# Read the input file path
 	li $v0, 8
-	la $a0, buffer
+	la $a0, inputBuffer
 	li $a1, 512
 	syscall
 
@@ -223,7 +227,7 @@ str_length:
 	lb $s0, 0($a0)
 
 	# Exit loop if finished with string
-	beqz $s0, open_file
+	beqz $s0, remove_final_char
 
 	# Increment character and counter
 	addi $a0, $a0, 1
@@ -232,10 +236,33 @@ str_length:
 	# Continue counting
 	j str_length # return to the top of the loop
 
+# For cutting off the UNIX-added new line character at the end of the file path (Y U DO DIS SPIM)
+remove_final_char:
+	addi $t5, $t0, -1
+	add $t6, $zero, $zero
+	
+	la $a0, inputBuffer
+	la $a1, transferBuffer
+
+remove_loop:
+	# Transfers the letter from the input buffer to the replacement buffer
+	lb $s0, 0($a0)
+	sb $s0, 0($a1)
+	
+	# Increment the counter and word position in both buffers
+	addi $t6, $t6, 1
+	addi $a0, $a0, 1
+	addi $a1, $a1, 1
+	
+	# When all letters but the new line character are added, open the file
+	beq $t5, $t6, open_file
+
+	j remove_loop
+
 open_file:
 	# Open the file
 	li $v0, 13
-	la $a0, buffer
+	la $a0, transferBuffer
 	add $a1, $zero, $zero
 	add $a2, $zero, $zero
 	syscall
