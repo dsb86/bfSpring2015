@@ -355,3 +355,18 @@ decrement_pointer:
 
 	# Go to next instruction
 	j loop
+print:
+	li $v0, 11
+	lbu $a0, ($s4)
+	syscall
+	j loop
+	
+take_input:
+	li $v0, 4
+	la $a0, readPrompt
+	syscall
+	
+	li $v0, 1
+	syscall 
+	sb $a0, ($s4)
+	j loop
