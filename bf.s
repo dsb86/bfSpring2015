@@ -17,7 +17,7 @@
 
 newLine: .asciiz "\n"
 inputPrompt: .asciiz "Enter a valid brainfuck file path: "
-readPrompt: .asciiz "Enter a number between 0 and 256: "
+readPrompt: .asciiz "Enter an ASCII character : "
 fileErr: .asciiz "Oops! There was an error processing your input file!"
 
 inputBuffer: .space 512
