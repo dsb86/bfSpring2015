@@ -403,3 +403,93 @@ take_input:
 	addi $s5, $s5, 1
 	
 	j loop
+
+left_bracket:
+	#check if current pointer value is 0, if yes find end bracket, otherwise execute loop
+	lb $t5, 0($s4)
+	
+	bne $t5, $zero, found_matching_bracket
+	#if 0, go to matching end bracket
+	
+	#t5 holds number of matching brackets required
+	li $t5, 1 
+
+find_matching_end_bracket:
+	#increment instruction pointer
+	addi $s5, $a0, 1
+
+	#load value of instruction to t6
+	lb $t6, 0($s5)
+	
+	#load ascii code for left, right brackets to t7 and t8
+	li $t7, 91
+	li $t8, 93
+	
+	beq $t6, $t7, found_left_begin
+	beq $t6, $t8, found_right_begin
+
+found_left_begin:
+	#increment number of matching brackets required
+	addi $t5, $t5, 1
+	
+	j find_matching_end_bracket
+
+found_right_begin:
+	#decrement number of matching brackets required
+	addi $t5, $t5, -1
+
+	#check if t5 is 0, else keep looking for brackets
+	beq $t5, $zero, found_matching_bracket
+	
+	j find_matching_end_bracket
+
+found_matching_bracket: 
+	#increment instruction pointer
+	addi $s5, $a0, 1
+
+	#keep pointer static
+	add $s4, $a1, $zero
+
+	#jump to loop
+	j loop
+	
+#right bracket ']'
+#uses t5, t6, t7, t8
+right_bracket:
+	#load data byte into t5
+	lb $t5, 0($s4)
+	
+	#check if byte is zero, exit loop if so, otherwise find beginning
+	beq $t5, $zero, found_matching_bracket
+	
+	#t5 now stores the number of '[' needed
+	li $t5, 1
+
+find_matching_begin_bracket:
+	#decrement instruction pointer
+	addi $s5, $a0, -1
+	
+	#load byte val of instruction into t6
+	lb $t6, 0($s5)
+	
+	#check instruction type, '[' in t7, '[' in t8
+	li $t7, 91
+	li $t8, 93
+	
+	beq $t6, $t7, found_left_end
+	beq $t6, $t8, found_right_end
+
+found_left_end:
+	#decrement number of matching brackets required
+	addi $t5, $t5, -1
+
+	#check if t5 is 0, else keep looking for brackets
+	beq $t5, $zero, found_matching_bracket
+	
+	j find_matching_begin_bracket
+
+found_right_end:
+	#increment number of matching brackets required
+	addi $t5, $t5, -1
+	
+	j find_matching_begin_bracket
