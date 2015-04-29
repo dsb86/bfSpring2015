@@ -359,10 +359,6 @@ no_op:
 	# Go to next instruction
 	j loop
 
-#############################################################################
-# Remaining functions go here
-#############################################################################
-
 increment_pointer:
 	# Increment the instruction
 	addi $s5, $a0, 1
@@ -382,6 +378,37 @@ decrement_pointer:
 
 	# Go to next instruction
 	j loop
+	
+increment_data:
+	 # Load the value stored at the pointer
+	 lw $t9, ($s4)
+    	
+    	# Increment that value
+	addi $t9, $t9, 1
+    
+	# Store it back
+	sw $t9, ($s4)
+
+	addi $s5, $a0, 1
+
+	# Go to the next instruction
+	j loop
+
+decrement_data:
+	# Load the value stored at the pointer
+	lw $t9, ($s4)
+
+	# Decrement that value
+	addi $t9, $t9, -1
+
+	# Store it back
+	sw $t9, ($s4)
+	
+	addi $s5, $a0, 1
+
+	# Go to the next instruction
+	j loop
+	
 print:
 	li $v0, 11
 	lbu $a0, 0($s4)
