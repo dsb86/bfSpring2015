@@ -310,7 +310,11 @@ error:
 	la $a0, fileErr
 	syscall
 
-	j finish
+	la $a0, newLine
+	syscall
+	
+	li $t7, 0x00400000
+	j $t7
 
 finish:
 	li $v0, 10
