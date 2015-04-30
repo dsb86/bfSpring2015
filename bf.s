@@ -17,13 +17,13 @@
 
 newLine: .asciiz "\n"
 inputPrompt: .asciiz "Enter a valid brainfuck file path: "
-readPrompt: .asciiz "Enter an ASCII character : "
+readPrompt: .asciiz "Enter a single byte of data: "
 fileErr: .asciiz "Oops! There was an error processing your input file!"
 
 inputBuffer: .space 512
 transferBuffer: .space 512
-data: .space 2048
-instructions: .space 2048
+data: .space 4096
+instructions: .space 4096
 
 ascii_instruction_table: 
 	.word no_op # (null)
@@ -185,23 +185,6 @@ ascii_instruction_table:
 #	$a2: Syscall parameters
 #
 #	$v0: Syscall commands
-# 
-# Storage of .bf-relevent info
-#	At the end of the UI code, both $s5 and $a0 store the brainfuck
-#		instructions.
-#	$s4 and $a1 store the data address, which is brainfuck's
-#		"pointer."
-#	Each brainfuck command should increment $a0 and store that value
-#		in $s5, which increments the instruction count so that
-#		the program executes commands in order.
-#	Incrementing or decrementing the pointer will require
-#		adding 1 or -1 to $a1 and storing that value in $s4.
-#	MAKE SURE TO INCREMENT $a0 AND STORE IT IN $s5. The program will
-#		constantly execute the same brainfuck command otherwise.
-#	Each brainfuck command section should copy $a1 into $s4 and jump
-#		to loop as its final 2 commands.
-#	See the no_op function as a template for what each command
-#		should do.
 #########################################################################
 .text
 
@@ -339,14 +322,29 @@ finish:
 # no-op: No meaningful operation
 # increment_pointer (>): Increments the position of the brainfuck pointer
 # decrement_pointer (<): Decrements the position of the brainfuck pointer
-# start_loop ([): Begins a while loop--while (byte at pointer /= 0)
-# end_loop (]): End of while loop
 # increment_data (+): Increments the data stored in the address the pointer
 #		      is at
 # decrement_data (-): Decrements the data stored in the address the pointer
 #		      is at
-# take_input (,): Allows the user to input a byte of data
 # print (.): Prints the byte located at the current pointer location
+# take_input (,): Allows the user to input a byte of data
+# start_loop ([): Begins a while loop--while (byte at pointer /= 0)
+#	Helper Functions:
+#		find_matching_end_bracket: Finds the end bracket that
+#					   matches the start bracket.
+#		found_left_begin: While looping, if an open bracket is
+#				  found, increment counter.
+#		found_right_begin: While looping, if a closing bracket is
+#				   found, decrement counter.
+# end_loop (]): End of while loop
+#	Helper Functions:
+#		find_matching_begin_bracket: Finds the open bracket that
+#					     matches the closing bracket.
+#		found_left_end: While looping, if an open bracket is found,
+#				increment counter.
+#		found_right_end: While looping, if a clpsing bracket is
+#				 found, decrement counter.
+#		found_matching_bracket: The matching bracket is found.
 ############################################################################
 
 no_op:
@@ -381,13 +379,13 @@ decrement_pointer:
 	
 increment_data:
 	 # Load the value stored at the pointer
-	 lw $t9, ($s4)
+	 lb $t0, 0($s4)
     	
     	# Increment that value
-	addi $t9, $t9, 1
+	addi $t0, $t0, 1
     
 	# Store it back
-	sw $t9, ($s4)
+	sb $t0, 0($s4)
 
 	addi $s5, $a0, 1
 
@@ -396,13 +394,13 @@ increment_data:
 
 decrement_data:
 	# Load the value stored at the pointer
-	lw $t9, ($s4)
+	lb $t0, 0($s4)
 
 	# Decrement that value
-	addi $t9, $t9, -1
+	addi $t0, $t0, -1
 
 	# Store it back
-	sw $t9, ($s4)
+	sb $t0, 0($s4)
 	
 	addi $s5, $a0, 1
 
@@ -410,69 +408,81 @@ decrement_data:
 	j loop
 	
 print:
+	# Print character
 	li $v0, 11
 	lbu $a0, 0($s4)
 	syscall
 	
+	# Increment instruction
 	addi $s5, $s5, 1
 	
 	j loop
 	
 take_input:
+	# prompt user
 	li $v0, 4
 	la $a0, readPrompt
 	syscall
 	
+	# take a byte of input
 	li $v0, 12
 	syscall 
 	sb $v0, 0($s4)
 	
+	# New line
+	li $v0, 4
+	la $a0, newLine
+	syscall
+	
+	# Increment instruction
 	addi $s5, $s5, 1
 	
 	j loop
 
-left_bracket:
+start_loop:
 	#check if current pointer value is 0, if yes find end bracket, otherwise execute loop
-	lb $t5, 0($s4)
+	lb $t4, 0($s4)
 	
-	bne $t5, $zero, found_matching_bracket
+	bne $t4, $zero, found_matching_bracket
 	#if 0, go to matching end bracket
 	
-	#t5 holds number of matching brackets required
-	li $t5, 1 
+	#t4 holds number of matching brackets required
+	li $t4, 1 
 
 find_matching_end_bracket:
 	#increment instruction pointer
-	addi $s5, $a0, 1
+	addi $s5, $s5, 1
 
-	#load value of instruction to t6
-	lb $t6, 0($s5)
+	#load value of instruction to t5
+	lb $t5, 0($s5)
 	
-	#load ascii code for left, right brackets to t7 and t8
-	li $t7, 91
-	li $t8, 93
+	#load ascii code for left, right brackets to t6 and t7
+	li $t6, 91
+	li $t7, 93
 	
-	beq $t6, $t7, found_left_begin
-	beq $t6, $t8, found_right_begin
+	beq $t5, $t6, found_left_begin
+	beq $t5, $t7, found_right_begin
+	
+	j find_matching_end_bracket
 
 found_left_begin:
 	#increment number of matching brackets required
-	addi $t5, $t5, 1
+	addi $t4, $t4, 1
 	
 	j find_matching_end_bracket
 
 found_right_begin:
 	#decrement number of matching brackets required
-	addi $t5, $t5, -1
+	addi $t4, $t4, -1
 
-	#check if t5 is 0, else keep looking for brackets
-	beq $t5, $zero, found_matching_bracket
+	#check if t4 is 0, else keep looking for brackets
+	beq $t4, $zero, found_matching_bracket
 	
 	j find_matching_end_bracket
 
 found_matching_bracket: 
 	#increment instruction pointer
-	addi $s5, $a0, 1
+	addi $s5, $s5, 1
 
 	#keep pointer static
 	add $s4, $a1, $zero
@@ -481,42 +491,44 @@ found_matching_bracket:
 	j loop
 	
 #right bracket ']'
-#uses t5, t6, t7, t8
-right_bracket:
-	#load data byte into t5
-	lb $t5, 0($s4)
+#uses t4, t5, t6, t7
+end_loop:
+	#load data byte into t4
+	lb $t4, 0($s4)
 	
 	#check if byte is zero, exit loop if so, otherwise find beginning
-	beq $t5, $zero, found_matching_bracket
+	beq $t4, $zero, found_matching_bracket
 	
-	#t5 now stores the number of '[' needed
-	li $t5, 1
+	#t4 now stores the number of '[' needed
+	li $t4, 1
 
 find_matching_begin_bracket:
 	#decrement instruction pointer
-	addi $s5, $a0, -1
+	addi $s5, $s5, -1
 	
-	#load byte val of instruction into t6
-	lb $t6, 0($s5)
+	#load byte val of instruction into t5
+	lb $t5, 0($s5)
 	
-	#check instruction type, '[' in t7, '[' in t8
-	li $t7, 91
-	li $t8, 93
+	#check instruction type, '[' in t6, '[' in t7
+	li $t6, 91
+	li $t7, 93
 	
-	beq $t6, $t7, found_left_end
-	beq $t6, $t8, found_right_end
+	beq $t5, $t6, found_left_end
+	beq $t5, $t7, found_right_end
 
+	j find_matching_begin_bracket
+	
 found_left_end:
 	#decrement number of matching brackets required
-	addi $t5, $t5, -1
+	addi $t4, $t4, -1
 
-	#check if t5 is 0, else keep looking for brackets
-	beq $t5, $zero, found_matching_bracket
+	#check if t4 is 0, else keep looking for brackets
+	beq $t4, $zero, found_matching_bracket
 	
 	j find_matching_begin_bracket
 
 found_right_end:
 	#increment number of matching brackets required
-	addi $t5, $t5, -1
+	addi $t4, $t4, 1
 	
 	j find_matching_begin_bracket
